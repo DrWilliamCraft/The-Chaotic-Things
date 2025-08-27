@@ -1,5 +1,8 @@
 package net.mrafton.thechaotic;
 
+
+import net.mrafton.thechaotic.item.ModCreativeModeTabs;
+import net.mrafton.thechaotic.item.ModItems;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
@@ -22,7 +25,7 @@ import net.neoforged.neoforge.event.server.ServerStartingEvent;
 
 // The value here should match an entry in the META-INF/neoforge.mods.toml file
 @Mod(TheChaotic.MOD_ID)
-public class TheChaotic {
+public class  TheChaotic {
     // Define mod id in a common place for everything to reference
     public static final String MOD_ID = "the_chaotic";
     // Directly reference a slf4j logger
@@ -34,6 +37,8 @@ public class TheChaotic {
     public TheChaotic(IEventBus modEventBus, ModContainer modContainer) {
         // Register the commonSetup method for modloading
         modEventBus.addListener(this::commonSetup);
+        ModItems.register(modEventBus);
+        ModCreativeModeTabs.register(modEventBus);
         // Register ourselves for server and other game events we are interested in.
         // Note that this is necessary if and only if we want *this* class (ExampleMod) to respond directly to events.
         // Do not add this line if there are no @SubscribeEvent-annotated functions in this class, like onServerStarting() below.
@@ -61,7 +66,6 @@ public class TheChaotic {
 
     // Add the example block item to the building blocks tab
     private void addCreative(BuildCreativeModeTabContentsEvent event) {
-
     }
 
     // You can use SubscribeEvent and let the Event Bus discover methods to call
@@ -72,7 +76,7 @@ public class TheChaotic {
     }
 
     // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent
-    @EventBusSubscriber(modid = TheChaotic.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+    @EventBusSubscriber(modid = TheChaotic.MOD_ID,value = Dist.CLIENT)
     static class ClientModEvents {
         @SubscribeEvent
         static void onClientSetup(FMLClientSetupEvent event) {
