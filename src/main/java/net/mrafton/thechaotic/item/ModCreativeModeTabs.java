@@ -29,11 +29,9 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.FLUX_ANCHOR);
                         output.accept(ModItems.AEON_SHARD);
 
-
                     }).build());
 
     public static void register(IEventBus eventBus){
         CREATIVE_MODE_TABS.register(eventBus);
     }
-
 }
