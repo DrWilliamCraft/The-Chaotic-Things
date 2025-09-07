@@ -3,9 +3,9 @@ package net.mrafton.thechaotic.item;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.ItemStack;
 import net.mrafton.thechaotic.TheChaotic;
+import net.mrafton.thechaotic.block.ModBlocks;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -28,6 +28,7 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.CHRONO_GEAR);
                         output.accept(ModItems.FLUX_ANCHOR);
                         output.accept(ModItems.AEON_SHARD);
+                        output.accept(ModBlocks.NETHER_STAR_BLOCK);
 
                     }).build());
 
