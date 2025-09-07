@@ -1,0 +1,5 @@
+// 1.21.1	2025-09-08T00:16:19.6161348	Recipes
+421eb2b5a72762abc8e5c3ef22dc96ed0268bc52 data/minecraft/advancement/recipes/misc/nether_star.json
+ce2535e842849e23cf156cf3a0d8a4acaa629239 data/minecraft/recipe/nether_star.json
+4b0b56924e7252590bf8ed7106e12f8b66814ea9 data/the_chaotic/advancement/recipes/misc/nether_star_block.json
+e601c444ab5928ff605f641cb2788d2e8e13f43a data/the_chaotic/recipe/nether_star_block.json
