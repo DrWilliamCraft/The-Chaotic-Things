@@ -2,8 +2,11 @@ package net.mrafton.thechaotic;
 
 
 import net.mrafton.thechaotic.block.ModBlocks;
+import net.mrafton.thechaotic.entity.ModBlockEntities;
+import net.mrafton.thechaotic.entity.renderer.PedestalBlockEntityRenderer;
 import net.mrafton.thechaotic.item.ModCreativeModeTabs;
 import net.mrafton.thechaotic.item.ModItems;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
@@ -43,6 +46,7 @@ public class  TheChaotic {
         ModItems.register(modEventBus);
         ModBlocks.register(modEventBus);
         ModCreativeModeTabs.register(modEventBus);
+        ModBlockEntities.register(modEventBus);
         // Register ourselves for server and other game events we are interested in.
         // Note that this is necessary if and only if we want *this* class (ExampleMod) to respond directly to events.
         // Do not add this line if there are no @SubscribeEvent-annotated functions in this class, like onServerStarting() below.
@@ -84,9 +88,11 @@ public class  TheChaotic {
     static class ClientModEvents {
         @SubscribeEvent
         static void onClientSetup(FMLClientSetupEvent event) {
-            // Some client setup code
-            LOGGER.info("HELLO FROM CLIENT SETUP");
-            LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
         }
+        @SubscribeEvent
+        public static void registerBER(EntityRenderersEvent.RegisterRenderers event) {
+            event.registerBlockEntityRenderer(ModBlockEntities.PEDESTAL_BE.get(), PedestalBlockEntityRenderer::new);}
+
+
     }
 }

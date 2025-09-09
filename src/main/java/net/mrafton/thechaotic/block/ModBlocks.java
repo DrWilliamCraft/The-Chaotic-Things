@@ -5,6 +5,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.mrafton.thechaotic.TheChaotic;
+import net.mrafton.thechaotic.block.test.PedestalBlock;
 import net.mrafton.thechaotic.item.ModItems;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredBlock;
@@ -19,7 +20,8 @@ public class ModBlocks {
     public static final DeferredBlock<Block> NETHER_STAR_BLOCK =registerBlock("nether_star_block",
             ()->new Block(BlockBehaviour.Properties.of().strength(4f).requiresCorrectToolForDrops()));
 
-
+    public static final DeferredBlock<Block> PEDESTAL =registerBlock("pedestal",
+            ()-> new PedestalBlock(BlockBehaviour.Properties.of().noOcclusion()));
 
 
     private static <T extends Block> DeferredBlock<T> registerBlock(String name, Supplier<T>block){

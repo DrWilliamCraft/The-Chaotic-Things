@@ -29,6 +29,9 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.FLUX_ANCHOR);
                         output.accept(ModItems.AEON_SHARD);
                         output.accept(ModBlocks.NETHER_STAR_BLOCK);
+                        output.accept(ModBlocks.PEDESTAL);
+
+
 
                     }).build());
 
