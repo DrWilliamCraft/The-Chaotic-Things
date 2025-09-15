@@ -23,9 +23,9 @@ public class PedestalBlockEntityRenderer implements BlockEntityRenderer<Pedestal
     }
 
     @Override
-    public void render(PedestalBlockEntity be, float partialTick, PoseStack poseStack,
+    public void render(PedestalBlockEntity blockEntity, float partialTick, PoseStack poseStack,
                        MultiBufferSource buffers, int packedLight, int packedOverlay) {
-        ItemStack stack = be.getItem(0);
+        ItemStack stack = blockEntity.inventory.getStackInSlot (0);
         if (stack == null || stack.isEmpty()) return;
 
         ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer();
@@ -33,9 +33,9 @@ public class PedestalBlockEntityRenderer implements BlockEntityRenderer<Pedestal
         poseStack.pushPose();
         poseStack.translate(0.5f, 1.15f, 0.5f);
         poseStack.scale(0.5f, 0.5f, 0.5f);
-        poseStack.mulPose(Axis.YP.rotationDegrees(be.getRenderingRotation())); // optional: + partialTick*speed
+        poseStack.mulPose(Axis.YP.rotationDegrees(blockEntity.getRenderingRotation())); // optional: + partialTick*speed
 
-        int seed = (int)be.getBlockPos().asLong();
+        int seed = (int)blockEntity.getBlockPos().asLong();
         itemRenderer.renderStatic(
                 stack,
                 ItemDisplayContext.FIXED,
@@ -43,7 +43,7 @@ public class PedestalBlockEntityRenderer implements BlockEntityRenderer<Pedestal
                 packedOverlay,
                 poseStack,
                 buffers,
-                be.getLevel(),
+                blockEntity.getLevel(),
                 seed
         );
         poseStack.popPose();

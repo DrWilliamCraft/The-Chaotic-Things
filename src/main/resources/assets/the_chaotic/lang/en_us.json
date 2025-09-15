@@ -10,6 +10,15 @@
 
 
 
+  "block.the_chaotic.chrono_crafter": "Chrono Crafter",
+  "block.the_chaotic.pedestal": "Pedestal",
 
-  "itemGroup.the_chaotic.the_chaotic_item_tab": "The Chaotic Things"
+
+  "blockentity.the_chaotic.chrono_crafter": "Chrono Crafter",
+  "blockentity.the_chaotic.pedestal": "Pedestal",
+  "itemGroup.the_chaotic.the_chaotic_item_tab": "The Chaotic Things",
+
+
+  "the_chaotic.tooltip.liquid.amount.with.capacity": "%s / %s mB",
+  "the_chaotic.tooltip.liquid.amount": "%s mB"
 }

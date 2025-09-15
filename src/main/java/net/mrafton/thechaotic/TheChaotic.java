@@ -6,7 +6,12 @@ import net.mrafton.thechaotic.entity.ModBlockEntities;
 import net.mrafton.thechaotic.entity.renderer.PedestalBlockEntityRenderer;
 import net.mrafton.thechaotic.item.ModCreativeModeTabs;
 import net.mrafton.thechaotic.item.ModItems;
+import net.mrafton.thechaotic.recipe.ModRecipes;
+import net.mrafton.thechaotic.screen.ModMenuTypes;
+import net.mrafton.thechaotic.screen.machine.ChronoCrafterScreen;
+import net.mrafton.thechaotic.screen.test.PedestalScreen;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
@@ -47,6 +52,8 @@ public class  TheChaotic {
         ModBlocks.register(modEventBus);
         ModCreativeModeTabs.register(modEventBus);
         ModBlockEntities.register(modEventBus);
+        ModMenuTypes.register(modEventBus);
+        ModRecipes.register(modEventBus);
         // Register ourselves for server and other game events we are interested in.
         // Note that this is necessary if and only if we want *this* class (ExampleMod) to respond directly to events.
         // Do not add this line if there are no @SubscribeEvent-annotated functions in this class, like onServerStarting() below.
@@ -91,8 +98,13 @@ public class  TheChaotic {
         }
         @SubscribeEvent
         public static void registerBER(EntityRenderersEvent.RegisterRenderers event) {
-            event.registerBlockEntityRenderer(ModBlockEntities.PEDESTAL_BE.get(), PedestalBlockEntityRenderer::new);}
-
+            event.registerBlockEntityRenderer(ModBlockEntities.PEDESTAL_BE.get(), PedestalBlockEntityRenderer::new);
+        }
+        @SubscribeEvent
+        public static void registerScreens(RegisterMenuScreensEvent event){
+            event.register(ModMenuTypes.PEDESTAL_MENU.get(), PedestalScreen::new);
+            event.register(ModMenuTypes.CHRONO_CRAFTER_MENU.get(), ChronoCrafterScreen::new);
+        }
 
     }
 }

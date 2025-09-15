@@ -18,6 +18,7 @@ public class ModBlockStateProvider extends BlockStateProvider {
     @Override
     protected void registerStatesAndModels() {
         blocksWithItem(ModBlocks.NETHER_STAR_BLOCK);
+        blocksWithItem(ModBlocks.CHRONO_CRAFTER);
 
     }
     private void blocksWithItem(DeferredBlock<Block> deferredBlock){

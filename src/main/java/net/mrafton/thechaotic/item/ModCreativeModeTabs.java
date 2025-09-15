@@ -30,6 +30,7 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.AEON_SHARD);
                         output.accept(ModBlocks.NETHER_STAR_BLOCK);
                         output.accept(ModBlocks.PEDESTAL);
+                        output.accept(ModBlocks.CHRONO_CRAFTER);
 
 
 

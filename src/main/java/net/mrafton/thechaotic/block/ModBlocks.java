@@ -5,6 +5,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.mrafton.thechaotic.TheChaotic;
+import net.mrafton.thechaotic.block.machine.ChronoCrafterBlock;
 import net.mrafton.thechaotic.block.test.PedestalBlock;
 import net.mrafton.thechaotic.item.ModItems;
 import net.neoforged.bus.api.IEventBus;
@@ -22,6 +23,8 @@ public class ModBlocks {
 
     public static final DeferredBlock<Block> PEDESTAL =registerBlock("pedestal",
             ()-> new PedestalBlock(BlockBehaviour.Properties.of().noOcclusion()));
+    public static final  DeferredBlock<Block> CHRONO_CRAFTER = registerBlock("chrono_crafter",
+            ()->new ChronoCrafterBlock(BlockBehaviour.Properties.of().strength(4f).requiresCorrectToolForDrops()));
 
 
     private static <T extends Block> DeferredBlock<T> registerBlock(String name, Supplier<T>block){
