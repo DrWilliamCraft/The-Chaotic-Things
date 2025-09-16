@@ -1,9 +1,7 @@
 {
   "type": "the_chaotic:chrono_crafting",
-  "ingredient": {
-    "item": "minecraft:nether_star"
-  },
-  "result": {
-    "id": "the_chaotic:nether_star_block"
-  }
+  "ingredient": { "item": "minecraft:iron_ingot" },
+  "result": { "id": "minecraft:nether_star", "count": 1 },
+  "max_energy": 5000,
+  "fluid": { "fluid": "mekanism:heavy_water", "amount": 1000 }
 }

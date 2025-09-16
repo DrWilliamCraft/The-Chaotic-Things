@@ -42,9 +42,11 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
     public final ItemStackHandler itemhandler =new ItemStackHandler(4){
         @Override
         public boolean isItemValid(int slot, ItemStack stack) {
-            if(slot ==OUTPUT_ITEM_SLOT) return false;
-            if(slot == INPUT_ITEM_SLOT)return isAllowedAsInput(stack);
-            return super.isItemValid(slot,stack);
+            if (slot == OUTPUT_ITEM_SLOT) return false;
+            if (slot == INPUT_ITEM_SLOT)  return isAllowedAsInput(stack);
+            if (slot == FLUID_ITEM_SLOT)  return isFluidItem(stack);
+            if (slot == ENERGY_ITEM_SLOT) return isEnergyItem(stack);
+            return false;
         }
 
         @Override
@@ -65,9 +67,6 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
     private int progress = 0;
     private int maxprogress = 72;
     private final int DEFAULT_MAX_PROGRESS =72;
-
-    private static final int ENERGY_CRAFT_AMOUNT =25;
-    private static final int FLUID_CRAFT_AMOUNT = 1000;
 
     private final ModEnergyStorage ENERGY_STORAGE = createEnergyStorage();
     private ModEnergyStorage createEnergyStorage(){
@@ -139,17 +138,10 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
     public boolean isAllowedAsInput(ItemStack stack) {
         if (stack.isEmpty() || this.level == null) return false;
 
-        // Variante A: über matches(...) (funktioniert meist am zuverlässigsten)
         return this.level.getRecipeManager()
                 .getAllRecipesFor(ModRecipes.CHRONO_CRAFTER_TYPE.get())
                 .stream()
-                .anyMatch(r -> r.value().matches(new ChronoCrafterRecipeInput(stack), this.level));
-
-        // Variante B (falls dein Rezept eine Ingredient-Eingabe hat):
-        // return this.level.getRecipeManager()
-        //         .getAllRecipesFor(ModRecipes.CHRONO_CRAFTER_TYPE.get())
-        //         .stream()
-        //         .anyMatch(r -> r.value().input().test(stack));
+                .anyMatch(r -> r.value().inputItem().test(stack)); // <- wichtig
     }
 
     @Override
@@ -194,14 +186,16 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
     }
 
     public void tick(Level level, BlockPos pos, BlockState state) {
-        if(hasRecipe() && isOutputSlotEmptyOrRecievable()) {
-            increaseCraftingProgress();
-            useEnergyForCrafting();
-            setChanged(level, pos, state);
-            if (hasCraftingFinished()) {
-                craftItem();
-                extractFluidForCrafting();
-                resetProgress();
+        chargeFromEnergyItem();
+        if (hasRecipe() && isOutputSlotEmptyOrRecievable()) {
+            if (useEnergyForCrafting()) { // nur wenn wir zahlen konnten …
+                increaseCraftingProgress();
+                setChanged(level, pos, state);
+                if (hasCraftingFinished()) {
+                    craftItem();
+                    extractFluidForCrafting();
+                    resetProgress();
+                }
             }
         } else {
             resetProgress();
@@ -210,29 +204,42 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
         if (hasFluidStackInSlot()){
             transferFluidToTank();
         }
-
     }
 
     private void extractFluidForCrafting() {
-        this.FLUID_TANK.drain(FLUID_CRAFT_AMOUNT, IFluidHandler.FluidAction.EXECUTE);
-
-    }
-
-    private void transferFluidToTank() {
-        FluidActionResult result = FluidUtil.tryEmptyContainer(itemhandler.getStackInSlot(0), this.FLUID_TANK, Integer.MAX_VALUE, null, true);
-        if(result.result != ItemStack.EMPTY) {
-            itemhandler.setStackInSlot(FLUID_ITEM_SLOT, result.result);
-        }
+        getCurentRecipe().ifPresent(rec -> {
+            int amt = requiredFluidAmount(rec.value());
+            if (amt > 0) FLUID_TANK.drain(amt, IFluidHandler.FluidAction.EXECUTE);
+        });
     }
 
     private boolean hasFluidStackInSlot() {
-        return !itemhandler.getStackInSlot(FLUID_ITEM_SLOT).isEmpty()
-                && itemhandler.getStackInSlot(FLUID_ITEM_SLOT).getCapability(Capabilities.FluidHandler.ITEM, null) != null
-                && !itemhandler.getStackInSlot(FLUID_ITEM_SLOT).getCapability(Capabilities.FluidHandler.ITEM, null).getFluidInTank(0).isEmpty();
+        ItemStack s = itemhandler.getStackInSlot(FLUID_ITEM_SLOT);
+        var fh = s.getCapability(Capabilities.FluidHandler.ITEM, null);
+        return !s.isEmpty() && fh != null && fh.getTanks() > 0 && !fh.getFluidInTank(0).isEmpty();
     }
 
-    private void useEnergyForCrafting() {
-        this.ENERGY_STORAGE.extractEnergy(ENERGY_CRAFT_AMOUNT,false);
+    private void transferFluidToTank() {
+        FluidActionResult result = FluidUtil.tryEmptyContainer(
+                itemhandler.getStackInSlot(FLUID_ITEM_SLOT), this.FLUID_TANK, Integer.MAX_VALUE, null, true);
+        if (result.isSuccess()) {
+            itemhandler.setStackInSlot(FLUID_ITEM_SLOT, result.getResult());
+        }
+    }
+
+    private boolean useEnergyForCrafting() {
+        var opt = getCurentRecipe();
+        if (opt.isEmpty()) return false;
+        ChronoCrafterRecipe r = opt.get().value();
+
+        int perTick = energyPerTick(r);
+        if (perTick <= 0) return true; // Rezept braucht keine Energie
+
+        int extracted = ENERGY_STORAGE.extractEnergy(perTick, true);
+        if (extracted < perTick) return false; // nicht genug für diesen Tick
+
+        ENERGY_STORAGE.extractEnergy(perTick, false);
+        return true;
     }
 
     private void resetProgress() {
@@ -241,13 +248,16 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
     }
 
     private void craftItem() {
-        Optional<RecipeHolder<ChronoCrafterRecipe>> recipe =getCurentRecipe();
-        ItemStack output =recipe.get().value().output();
+        Optional<RecipeHolder<ChronoCrafterRecipe>> recipe = getCurentRecipe();
+        if (recipe.isEmpty()) return;
 
-        itemhandler.extractItem(INPUT_ITEM_SLOT,1,false);
-        itemhandler.setStackInSlot(OUTPUT_ITEM_SLOT, new ItemStack(output.getItem(),
-                itemhandler.getStackInSlot(OUTPUT_ITEM_SLOT).getCount() + output.getCount()));
+        ItemStack output = recipe.get().value().getResultItem(level.registryAccess());
 
+        itemhandler.extractItem(INPUT_ITEM_SLOT, 1, false);
+        itemhandler.setStackInSlot(OUTPUT_ITEM_SLOT, new ItemStack(
+                output.getItem(),
+                itemhandler.getStackInSlot(OUTPUT_ITEM_SLOT).getCount() + output.getCount()
+        ));
     }
 
     private boolean hasCraftingFinished() {
@@ -264,25 +274,32 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
     }
 
     private boolean hasRecipe() {
-        Optional<RecipeHolder<ChronoCrafterRecipe>> recipe = getCurentRecipe();
-        if(recipe.isEmpty()){
-            return false;
-        }
-        ItemStack output =recipe.get().value().getResultItem(null);
-        return canInsertItemAmountIntoOutput(output.getCount()) && canInsertItemIntoOutput(output) && hasEnoughEnergyToCraft() && hasEnoughFluidToCraft();
-    }
+        var opt = getCurentRecipe();
+        if (opt.isEmpty()) return false;
 
-    private boolean hasEnoughFluidToCraft() {
-        return FLUID_TANK.getFluidAmount() >= FLUID_CRAFT_AMOUNT;
-    }
+        ChronoCrafterRecipe r = opt.get().value();
 
-    private boolean hasEnoughEnergyToCraft() {
-        return this.ENERGY_STORAGE.getEnergyStored() >= ENERGY_CRAFT_AMOUNT *maxprogress;
+        // Achtung: wir müssen dasselbe Input-Objekt bauen, das Energie/Fluid bereitstellt:
+        ChronoCrafterRecipeInput in = new ChronoCrafterRecipeInput(
+                itemhandler.getStackInSlot(INPUT_ITEM_SLOT),
+                ENERGY_STORAGE,
+                FLUID_TANK
+        );
+        if (!r.matches(in, level)) return false;
+
+        // Output-Kapazität prüfen
+        ItemStack out = r.getResultItem(level.registryAccess());
+        return canInsertItemAmountIntoOutput(out.getCount()) && canInsertItemIntoOutput(out);
     }
 
     private Optional<RecipeHolder<ChronoCrafterRecipe>> getCurentRecipe() {
+        ChronoCrafterRecipeInput in = new ChronoCrafterRecipeInput(
+                itemhandler.getStackInSlot(INPUT_ITEM_SLOT),
+                ENERGY_STORAGE,
+                FLUID_TANK
+        );
         return this.level.getRecipeManager()
-                .getRecipeFor(ModRecipes.CHRONO_CRAFTER_TYPE.get(),new ChronoCrafterRecipeInput(itemhandler.getStackInSlot(INPUT_ITEM_SLOT)),level);
+                .getRecipeFor(ModRecipes.CHRONO_CRAFTER_TYPE.get(), in, level);
     }
 
     private boolean canInsertItemIntoOutput(ItemStack output) {
@@ -298,7 +315,37 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
         return maxCount >= currentCount +count;
     }
 
+    private int energyPerTick(ChronoCrafterRecipe r) {
+        int total = Math.max(0, r.maxEnergy());
+        if (total == 0) return 0;
+        int ticks = Math.max(1, maxprogress);
+        return (int) Math.ceil((double) total / ticks);
+    }
 
+    private int requiredFluidAmount(ChronoCrafterRecipe r) {
+        return r.fluid() == null ? 0 : r.fluid().amount();
+    }
+
+    private void chargeFromEnergyItem() {
+        ItemStack bat = itemhandler.getStackInSlot(ENERGY_ITEM_SLOT);
+        var itemFE = bat.getCapability(Capabilities.EnergyStorage.ITEM, null);
+        if (itemFE == null) return;
+
+        int canReceive = ENERGY_STORAGE.receiveEnergy(1000, true);
+        if (canReceive <= 0) return;
+
+        int pulled = itemFE.extractEnergy(canReceive, false);
+        if (pulled > 0) ENERGY_STORAGE.receiveEnergy(pulled, false);
+    }
+
+    private static boolean isFluidItem(ItemStack stack) {
+        var fh = stack.getCapability(net.neoforged.neoforge.capabilities.Capabilities.FluidHandler.ITEM, null);
+        return fh != null && fh.getTanks() > 0; // reicht für Füll-/Leereimer, Tanks, Zellen usw.
+    }
+    private static boolean isEnergyItem(ItemStack stack) {
+        var fe = stack.getCapability(net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.ITEM, null);
+        return fe != null; // falls du NUR Geber zulassen willst: return fe != null && fe.extractEnergy(1, true) > 0;
+    }
 
     @Nullable
     @Override

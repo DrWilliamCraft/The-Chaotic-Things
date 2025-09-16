@@ -18,6 +18,8 @@
   "blockentity.the_chaotic.pedestal": "Pedestal",
   "itemGroup.the_chaotic.the_chaotic_item_tab": "The Chaotic Things",
 
+  "tooltip.the_chaotic.required_fluid": "Requires: %s mB",
+  "tooltip.the_chaotic.required_energy": "Requires: %s FE",
 
   "the_chaotic.tooltip.liquid.amount.with.capacity": "%s / %s mB",
   "the_chaotic.tooltip.liquid.amount": "%s mB"
