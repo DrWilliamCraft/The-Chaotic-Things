@@ -138,6 +138,8 @@ dependencies {
         runtimeOnly("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
         implementation "curse.maven:mekanism-268560:6018306"
         implementation "curse.maven:flux-networks-248020:6089446"
+        implementation "curse.maven:applied-energistics-2-223794:6977949"
+        implementation "curse.maven:guideme-1173950:6812025"
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"

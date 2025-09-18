@@ -33,6 +33,8 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.FluidUtil;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 import net.neoforged.neoforge.items.ItemStackHandler;
 import org.jetbrains.annotations.Nullable;
 
@@ -57,6 +59,72 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
             }
         }
     };
+    private final IItemHandler externalHandler = new IItemHandler() {
+        @Override public int getSlots() {
+            return ChronoCrafterBlockEntity.this.itemhandler.getSlots();
+        }
+        @Override public ItemStack getStackInSlot(int slot) {
+            return ChronoCrafterBlockEntity.this.itemhandler.getStackInSlot(slot);
+        }
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            // Output NIE befüllen
+            if (slot == OUTPUT_ITEM_SLOT) return stack;
+
+            if (slot == FLUID_ITEM_SLOT) {
+                return isFluidItem(stack)
+                        ? ChronoCrafterBlockEntity.this.itemhandler.insertItem(slot, stack, simulate)
+                        : stack;
+            }
+            if (slot == ENERGY_ITEM_SLOT) {
+                return isEnergyItem(stack)
+                        ? ChronoCrafterBlockEntity.this.itemhandler.insertItem(slot, stack, simulate)
+                        : stack;
+            }
+            if (slot == INPUT_ITEM_SLOT && isAllowedAsInput(stack)) {
+                return ChronoCrafterBlockEntity.this.itemhandler.insertItem(slot, stack, simulate);
+            }
+            return stack;
+        }
+        @Override
+        public ItemStack extractItem(int slot, int amount, boolean simulate) {
+            // *** Nur OUTPUT darf von außen entnommen werden ***
+            if (slot == OUTPUT_ITEM_SLOT) {
+                return ChronoCrafterBlockEntity.this.itemhandler.extractItem(slot, amount, simulate);
+            }
+            // Optional: leere Container aus dem Fluid-Slot
+            if (slot == FLUID_ITEM_SLOT) {
+                ItemStack s = ChronoCrafterBlockEntity.this.itemhandler.getStackInSlot(slot);
+                var fh = s.getCapability(Capabilities.FluidHandler.ITEM, null);
+                if (fh != null && fh.getTanks() > 0 && fh.getFluidInTank(0).isEmpty()) {
+                    return ChronoCrafterBlockEntity.this.itemhandler.extractItem(slot, amount, simulate);
+                }
+            }
+            return ItemStack.EMPTY;
+        }
+        @Override public int getSlotLimit(int slot) {
+            if (slot == FLUID_ITEM_SLOT || slot == ENERGY_ITEM_SLOT) return 1;
+            return ChronoCrafterBlockEntity.this.itemhandler.getSlotLimit(slot);
+        }
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            if (slot == OUTPUT_ITEM_SLOT) return false;
+            if (slot == FLUID_ITEM_SLOT)  return isFluidItem(stack);
+            if (slot == ENERGY_ITEM_SLOT) return isEnergyItem(stack);
+            if (slot == INPUT_ITEM_SLOT)  return isAllowedAsInput(stack);
+            return false;
+        }
+    };
+
+    // >>> NEU: Getter für den externen Handler (vom Capability-Event aufgerufen)
+    public IItemHandler getExternalItemHandler(@Nullable Direction side) {
+        return externalHandler; // gleiche Regeln von allen Seiten
+    }
+
+    // (dein alter Getter kann bleiben, aber NICHT mehr im Event benutzen)
+    public IItemHandler getItemhandler(Direction direction) {
+        return this.itemhandler;
+    }
 
     private static final  int FLUID_ITEM_SLOT =0;
     private static final  int INPUT_ITEM_SLOT =1;
@@ -187,30 +255,45 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
 
     public void tick(Level level, BlockPos pos, BlockState state) {
         chargeFromEnergyItem();
+
+
         if (hasRecipe() && isOutputSlotEmptyOrRecievable()) {
-            if (useEnergyForCrafting()) { // nur wenn wir zahlen konnten …
+            if (useEnergyForCrafting()) {
                 increaseCraftingProgress();
                 setChanged(level, pos, state);
+
                 if (hasCraftingFinished()) {
-                    craftItem();
-                    extractFluidForCrafting();
-                    resetProgress();
+                    // Rezept VOR dem Verbrauch holen und weiterreichen
+                    var opt = getCurentRecipe();
+                    if (opt.isPresent()) {
+                        ChronoCrafterRecipe r = opt.get().value();
+                        craftItem(r);
+                        extractFluidForCrafting(r);
+                        resetProgress();
+                    } else {
+                        resetProgress(); // sollte kaum passieren, Sicherheitsnetz
+                    }
                 }
             }
         } else {
             resetProgress();
         }
 
-        if (hasFluidStackInSlot()){
+        if (hasFluidStackInSlot()) {
             transferFluidToTank();
         }
+        if (++pushCooldown >= 5) {
+            pushCooldown = 0;
+            pushOutputToNeighbors();
+        }
     }
-
-    private void extractFluidForCrafting() {
-        getCurentRecipe().ifPresent(rec -> {
-            int amt = requiredFluidAmount(rec.value());
-            if (amt > 0) FLUID_TANK.drain(amt, IFluidHandler.FluidAction.EXECUTE);
-        });
+    private int pushCooldown = 0;
+    private void extractFluidForCrafting(ChronoCrafterRecipe r) {
+        int amt = requiredFluidAmount(r); // r.fluid() == null ? 0 : r.fluid().amount()
+        if (amt > 0) {
+            FLUID_TANK.drain(amt, IFluidHandler.FluidAction.EXECUTE);
+            setChanged(); // optional: Sync anstoßen
+        }
     }
 
     private boolean hasFluidStackInSlot() {
@@ -247,13 +330,13 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
         this.maxprogress = DEFAULT_MAX_PROGRESS;
     }
 
-    private void craftItem() {
-        Optional<RecipeHolder<ChronoCrafterRecipe>> recipe = getCurentRecipe();
-        if (recipe.isEmpty()) return;
-
-        ItemStack output = recipe.get().value().getResultItem(level.registryAccess());
-
+    private void craftItem(ChronoCrafterRecipe r) {
+        // Input verbrauchen
         itemhandler.extractItem(INPUT_ITEM_SLOT, 1, false);
+
+        // Output aus dem Rezept nehmen (registryAccess!)
+        ItemStack output = r.getResultItem(level.registryAccess());
+
         itemhandler.setStackInSlot(OUTPUT_ITEM_SLOT, new ItemStack(
                 output.getItem(),
                 itemhandler.getStackInSlot(OUTPUT_ITEM_SLOT).getCount() + output.getCount()
@@ -339,13 +422,40 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
     }
 
     private static boolean isFluidItem(ItemStack stack) {
-        var fh = stack.getCapability(net.neoforged.neoforge.capabilities.Capabilities.FluidHandler.ITEM, null);
+        var fh = stack.getCapability(Capabilities.FluidHandler.ITEM, null);
         return fh != null && fh.getTanks() > 0; // reicht für Füll-/Leereimer, Tanks, Zellen usw.
     }
     private static boolean isEnergyItem(ItemStack stack) {
-        var fe = stack.getCapability(net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.ITEM, null);
+        var fe = stack.getCapability(Capabilities.EnergyStorage.ITEM, null);
         return fe != null; // falls du NUR Geber zulassen willst: return fe != null && fe.extractEnergy(1, true) > 0;
     }
+
+    private void pushOutputToNeighbors() {
+        if (level == null || level.isClientSide()) return;
+
+        ItemStack stack = itemhandler.getStackInSlot(OUTPUT_ITEM_SLOT);
+        if (stack.isEmpty()) return;
+
+        for (Direction dir : Direction.values()) {
+            BlockPos neighbor = worldPosition.relative(dir);
+
+            // NEU: Capability vom Nachbar-Block über die Welt abfragen
+            IItemHandler target = level.getCapability(Capabilities.ItemHandler.BLOCK, neighbor, dir.getOpposite());
+            if (target == null) continue;
+
+            ItemStack toMove = stack.copy();
+            toMove.setCount(Math.min(stack.getCount(), 64)); // bspw. max 64 pro Versuch
+
+            ItemStack leftover = ItemHandlerHelper.insertItem(target, toMove, false);
+            int moved = toMove.getCount() - (leftover.isEmpty() ? 0 : leftover.getCount());
+            if (moved > 0) {
+                itemhandler.extractItem(OUTPUT_ITEM_SLOT, moved, false);
+                setChanged();
+                if (itemhandler.getStackInSlot(OUTPUT_ITEM_SLOT).isEmpty()) break;
+            }
+        }
+    }
+
 
     @Nullable
     @Override

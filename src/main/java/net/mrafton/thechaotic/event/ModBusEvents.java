@@ -15,7 +15,8 @@ public class ModBusEvents {
     @SubscribeEvent
     public static void registerCapabilities(RegisterCapabilitiesEvent event){
         event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, ModBlockEntities.CHRONO_CRAFTER_BE.get(), ChronoCrafterBlockEntity::getEnergyStorage);
-        event.registerBlockEntity(Capabilities.FluidHandler.BLOCK,ModBlockEntities.CHRONO_CRAFTER_BE.get(),ChronoCrafterBlockEntity::getFluidTank);
+        event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, ModBlockEntities.CHRONO_CRAFTER_BE.get(), ChronoCrafterBlockEntity::getFluidTank);
+        event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ModBlockEntities.CHRONO_CRAFTER_BE.get(), ChronoCrafterBlockEntity::getExternalItemHandler);
     }
 
 }
