@@ -20,9 +20,9 @@ import static net.mrafton.thechaotic.util.MouseUtil.isMouseAboveArea;
 
 public class ChronoCrafterScreen extends AbstractContainerScreen<ChronoCrafterMenu> {
     private static final ResourceLocation CHRONO_CRAFTER_GUI =
-            ResourceLocation.fromNamespaceAndPath(TheChaotic.MOD_ID, "textures/gui/chronocrafter/chrono_crafter_gui.png");
-    private static final ResourceLocation PROGRESS_ARROW =
-            ResourceLocation.fromNamespaceAndPath(TheChaotic.MOD_ID, "textures/gui/chronocrafter/arrow_progress.png");
+            ResourceLocation.fromNamespaceAndPath(TheChaotic.MOD_ID, "textures/gui/chronocrafter/chrono_crafter.png");
+    private static final ResourceLocation PROGRESS_BAR =
+            ResourceLocation.fromNamespaceAndPath(TheChaotic.MOD_ID, "textures/gui/chronocrafter/progress_bar.png");
     private EnergyDisplayTooltipArea energyInfoArea;
     private FluidTankRenderer fluidRenderer;
 
@@ -90,7 +90,8 @@ public class ChronoCrafterScreen extends AbstractContainerScreen<ChronoCrafterMe
 
     private void renderProgressArrow(GuiGraphics guiGraphics,int x, int y ){
         if (menu.isCrafting()) {
-            guiGraphics.blit(PROGRESS_ARROW, x + 73, y +35 ,0,0,menu.getScaledArrowProgress(), 16, 24, 16);
+           guiGraphics.blit(PROGRESS_BAR,x+ 130,y + 33 + 18 -menu.getScaledArrowProgress(),0,
+                   17 -menu.getScaledArrowProgress(),6,menu.getScaledArrowProgress(),6,18 );
         }
     }
 

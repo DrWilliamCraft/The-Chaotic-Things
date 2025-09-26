@@ -52,11 +52,16 @@ public class ChronoCrafterRecipeCategory implements IRecipeCategory<ChronoCrafte
     @Override
     public void setRecipe(IRecipeLayoutBuilder b, ChronoCrafterRecipe r, IFocusGroup focuses) {
         // Item-Input
-        b.addSlot(RecipeIngredientRole.INPUT, 54, 34)
-                .addIngredients(r.getIngredients().get(0));
-
+        addInput(b, r, 0, 80,  8);
+        addInput(b, r, 1, 99, 14);
+        addInput(b, r, 2,105, 33);
+        addInput(b, r, 3, 99, 52);
+        addInput(b, r, 4, 80, 58);
+        addInput(b, r, 5, 61, 52);
+        addInput(b, r, 6, 55, 33);
+        addInput(b, r, 7, 61, 14);
         // Output (optional: nur Tooltip für Energie, keine Anzeige)
-        b.addSlot(RecipeIngredientRole.OUTPUT, 104, 34)
+        b.addSlot(RecipeIngredientRole.OUTPUT, 80, 33)
                 .addItemStack(r.output().copy())
                 .addRichTooltipCallback((view, tooltip) -> {
                     if (r.maxEnergy() > 0) {
@@ -76,5 +81,10 @@ public class ChronoCrafterRecipeCategory implements IRecipeCategory<ChronoCrafte
                         );
             }
         }
+    }
+    private void addInput(IRecipeLayoutBuilder b, ChronoCrafterRecipe r, int idx, int x, int y) {
+        if (idx >= r.inputs().size()) return;
+        b.addSlot(RecipeIngredientRole.INPUT, x, y)
+                .addIngredients(r.inputs().get(idx));
     }
 }

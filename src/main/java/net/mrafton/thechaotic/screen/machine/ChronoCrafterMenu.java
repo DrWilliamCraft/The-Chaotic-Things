@@ -19,7 +19,7 @@ public class ChronoCrafterMenu extends AbstractContainerMenu {
 
 
     public ChronoCrafterMenu(int containerId, Inventory inv , FriendlyByteBuf extraData) {
-        this(containerId, inv , inv.player.level().getBlockEntity(extraData.readBlockPos()),new SimpleContainerData(2));
+        this(containerId, inv , inv.player.level().getBlockEntity(extraData.readBlockPos()),new SimpleContainerData(11));
     }
 
     public ChronoCrafterMenu(int containerId, Inventory inv , BlockEntity entity, ContainerData data){
@@ -31,10 +31,19 @@ public class ChronoCrafterMenu extends AbstractContainerMenu {
         addPlayerHotbar(inv);
         addPlayerInventory(inv);
 
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemhandler,0,8,62));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemhandler,1,54,34));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemhandler,2,104,34));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemhandler,3,152,62));
+
+        this.addSlot(new SlotItemHandler(this.blockEntity.itemhandler,0,80,8));
+        this.addSlot(new SlotItemHandler(this.blockEntity.itemhandler,1,99,14));
+        this.addSlot(new SlotItemHandler(this.blockEntity.itemhandler,2,105,33));
+        this.addSlot(new SlotItemHandler(this.blockEntity.itemhandler,3,99,52));
+        this.addSlot(new SlotItemHandler(this.blockEntity.itemhandler,4,80,58));
+        this.addSlot(new SlotItemHandler(this.blockEntity.itemhandler,5,61,52));
+        this.addSlot(new SlotItemHandler(this.blockEntity.itemhandler,6,55,33));
+        this.addSlot(new SlotItemHandler(this.blockEntity.itemhandler,7,61,14));
+        this.addSlot(new SlotItemHandler(this.blockEntity.itemhandler,8,80,33));
+        this.addSlot(new SlotItemHandler(this.blockEntity.itemhandler,9,8,62));
+        this.addSlot(new SlotItemHandler(this.blockEntity.itemhandler,10,152,62));
+
 
         addDataSlots(data);
     }
@@ -44,7 +53,7 @@ public class ChronoCrafterMenu extends AbstractContainerMenu {
     public int getScaledArrowProgress(){
         int progress = this.data.get(0);
         int maxProgress = this.data.get(1);
-        int arrowPixelSize =24;
+        int arrowPixelSize =17;
 
         return maxProgress != 0 && progress != 0 ? progress * arrowPixelSize /maxProgress :0;
     }
@@ -65,7 +74,7 @@ public class ChronoCrafterMenu extends AbstractContainerMenu {
     private static final int TE_INVENTORY_FIRST_SLOT_INDEX = VANILLA_FIRST_SLOT_INDEX + VANILLA_SLOT_COUNT;
 
     // THIS YOU HAVE TO DEFINE!
-    private static final int TE_INVENTORY_SLOT_COUNT = 4;  // must be the number of slots you have!
+    private static final int TE_INVENTORY_SLOT_COUNT = 11;  // must be the number of slots you have!
     @Override
     public ItemStack quickMoveStack(Player playerIn, int index) {
         Slot sourceSlot = slots.get(index);

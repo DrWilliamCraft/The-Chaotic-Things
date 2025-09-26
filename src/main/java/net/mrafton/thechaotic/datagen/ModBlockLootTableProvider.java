@@ -19,6 +19,7 @@ public class ModBlockLootTableProvider extends BlockLootSubProvider {
     protected void generate() {
         dropSelf(ModBlocks.NETHER_STAR_BLOCK.get());
         dropSelf(ModBlocks.CHRONO_CRAFTER.get());
+        dropSelf(ModBlocks.PEDESTAL.get());
 
     }
 

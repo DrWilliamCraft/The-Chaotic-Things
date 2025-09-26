@@ -1,7 +1,11 @@
 {
   "type": "the_chaotic:chrono_crafting",
-  "ingredient": { "item": "minecraft:iron_ingot" },
+  "inputs": [
+    { "item": "minecraft:oak_planks" },
+    { "item": "minecraft:iron_ingot" },
+    { "tag":  "minecraft:planks" }
+  ],
   "result": { "id": "minecraft:nether_star", "count": 1 },
-  "max_energy": 5000,
-  "fluid": { "fluid": "mekanism:heavy_water", "amount": 1000 }
+  "max_energy": 7200,
+  "fluid": { "fluid": "minecraft:water", "amount": 1000 }
 }
