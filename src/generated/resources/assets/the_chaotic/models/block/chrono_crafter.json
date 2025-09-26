@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "front": "the_chaotic:block/chrono_crafter_front",
+    "side": "the_chaotic:block/chrono_crafter_side",
+    "top": "the_chaotic:block/chrono_crafter_top"
+  }
+}
