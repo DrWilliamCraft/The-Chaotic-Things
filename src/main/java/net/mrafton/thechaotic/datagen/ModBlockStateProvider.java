@@ -27,11 +27,12 @@ public class ModBlockStateProvider extends BlockStateProvider {
 
 
     }
+
+
+
     private void blocksWithItem(DeferredBlock<Block> deferredBlock){
         simpleBlockWithItem(deferredBlock.get(),cubeAll(deferredBlock.get()));
     }
-
-
     private void blockItem(DeferredBlock<Block> deferredBlock) {
         simpleBlockItem(deferredBlock.get(), new ModelFile.UncheckedModelFile("the_chaotic:block/" + deferredBlock.getId().getPath()));
     }
