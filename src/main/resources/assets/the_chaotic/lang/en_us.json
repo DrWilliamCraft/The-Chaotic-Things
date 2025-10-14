@@ -22,5 +22,7 @@
   "tooltip.the_chaotic.required_energy": "Requires: %s FE",
 
   "the_chaotic.tooltip.liquid.amount.with.capacity": "%s / %s mB",
-  "the_chaotic.tooltip.liquid.amount": "%s mB"
+  "the_chaotic.tooltip.liquid.amount": "%s mB",
+
+  "jei.the_chaotic.chrono_crafter": "Chrono Crafter"
 }
