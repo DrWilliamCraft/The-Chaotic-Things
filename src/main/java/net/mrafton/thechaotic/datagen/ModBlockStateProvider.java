@@ -19,10 +19,10 @@ public class ModBlockStateProvider extends BlockStateProvider {
     @Override
     protected void registerStatesAndModels() {
         blocksWithItem(ModBlocks.NETHER_STAR_BLOCK);
-        horizontalBlock(ModBlocks.CHRONO_CRAFTER.get(),models().orientable("the_chaotic:chrono_crafter",
-                modLoc("block/chrono_crafter_side"),
-                modLoc("block/chrono_crafter_front"),
-                modLoc("block/chrono_crafter_top")));
+        //horizontalBlock(ModBlocks.CHRONO_CRAFTER.get(),models().orientable("the_chaotic:chrono_crafter",
+        //        modLoc("block/chrono_crafter_side"),
+        //        modLoc("block/chrono_crafter_front"),
+        //        modLoc("block/chrono_crafter_top")));)
         blockItem(ModBlocks.CHRONO_CRAFTER);
 
 

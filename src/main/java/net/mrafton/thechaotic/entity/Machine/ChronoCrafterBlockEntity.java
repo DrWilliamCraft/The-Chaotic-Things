@@ -19,10 +19,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.DirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.mrafton.thechaotic.block.machine.ChronoCrafterBlock;
 import net.mrafton.thechaotic.entity.ModBlockEntities;
 import net.mrafton.thechaotic.recipe.ChronoCrafterRecipe;
 import net.mrafton.thechaotic.recipe.ChronoCrafterRecipeInput;
@@ -288,6 +287,7 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
         if (hasRecipe() && isOutputSlotEmptyOrRecievable()) {
             if (useEnergyForCrafting()) {
                 increaseCraftingProgress();
+                level.setBlockAndUpdate(pos,state.setValue(ChronoCrafterBlock.WORKING,true));
                 setChanged(level, pos, state);
 
                 if (hasCraftingFinished()) {
@@ -305,6 +305,7 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
             }
         } else {
             resetProgress();
+            level.setBlockAndUpdate(pos, state.setValue(ChronoCrafterBlock.WORKING,false));
         }
 
         if (hasFluidStackInSlot()) {

@@ -18,6 +18,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.mrafton.thechaotic.entity.Machine.ChronoCrafterBlockEntity;
@@ -26,6 +27,7 @@ import org.jetbrains.annotations.Nullable;
 
 public class ChronoCrafterBlock extends BaseEntityBlock {
 
+    public static final BooleanProperty WORKING =BlockStateProperties.LIT;
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
     public static final MapCodec<ChronoCrafterBlock> CODEC = simpleCodec(ChronoCrafterBlock::new);
 
@@ -51,12 +53,12 @@ public class ChronoCrafterBlock extends BaseEntityBlock {
 
     @Override
     public @Nullable BlockState getStateForPlacement(BlockPlaceContext context) {
-        return this.defaultBlockState().setValue(FACING,context.getHorizontalDirection().getOpposite());
+        return this.defaultBlockState().setValue(FACING,context.getHorizontalDirection().getOpposite()).setValue(WORKING,false);
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING);
+        builder.add(FACING, WORKING);
     }
 
     /*BLOCK ENTITY*/
