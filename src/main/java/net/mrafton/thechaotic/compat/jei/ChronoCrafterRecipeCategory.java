@@ -87,4 +87,9 @@ public class ChronoCrafterRecipeCategory implements IRecipeCategory<ChronoCrafte
         b.addSlot(RecipeIngredientRole.INPUT, x, y)
                 .addIngredients(r.inputs().get(idx));
     }
+    @Override
+    public @Nullable ResourceLocation getRegistryName(ChronoCrafterRecipe recipe) {
+        return JEITheChaoticPlugin.CHRONO_IDS.get(recipe);
+    }
+
 }

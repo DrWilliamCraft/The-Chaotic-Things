@@ -21,6 +21,9 @@ import java.util.List;
 
 @JeiPlugin
 public class JEITheChaoticPlugin implements IModPlugin {
+    public static final java.util.Map<ChronoCrafterRecipe, ResourceLocation> CHRONO_IDS =
+            new java.util.IdentityHashMap<>();
+
     @Override
     public ResourceLocation getPluginUid() {
         return ResourceLocation.fromNamespaceAndPath(TheChaotic.MOD_ID,"jei_plugin");
@@ -36,8 +39,16 @@ public class JEITheChaoticPlugin implements IModPlugin {
     public void registerRecipes(IRecipeRegistration registration) {
         RecipeManager recipeManager = Minecraft.getInstance().level.getRecipeManager();
 
-        List<ChronoCrafterRecipe> chronoCrafterRecipes =recipeManager.getAllRecipesFor(ModRecipes.CHRONO_CRAFTER_TYPE.get()).stream().map(RecipeHolder::value).toList();
-        registration.addRecipes(ChronoCrafterRecipeCategory.CHRONO_CRAFTER_RECIPE_RECIPE_TYPE,chronoCrafterRecipes);
+        var holders = recipeManager.getAllRecipesFor(ModRecipes.CHRONO_CRAFTER_TYPE.get());
+
+        List<ChronoCrafterRecipe> recipes = holders.stream().map(holder -> {
+            CHRONO_IDS.put(holder.value(), holder.id());
+            return holder.value();
+        }).toList();
+        registration.addRecipes(
+                ChronoCrafterRecipeCategory.CHRONO_CRAFTER_RECIPE_RECIPE_TYPE,
+                recipes
+        );
     }
 
     @Override
