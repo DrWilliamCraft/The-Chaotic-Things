@@ -31,7 +31,7 @@ public class ModCreativeModeTabs {
                         output.accept(ModBlocks.NETHER_STAR_BLOCK);
                         output.accept(ModBlocks.PEDESTAL);
                         output.accept(ModBlocks.CHRONO_CRAFTER);
-
+                        output.accept(ModBlocks.CHRONO_TELEPORTER);
 
 
                     }).build());
