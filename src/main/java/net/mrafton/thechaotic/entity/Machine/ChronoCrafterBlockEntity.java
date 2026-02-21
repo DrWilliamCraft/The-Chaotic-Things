@@ -163,7 +163,7 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
 
     private final ModEnergyStorage ENERGY_STORAGE = createEnergyStorage();
     private ModEnergyStorage createEnergyStorage(){
-        return new ModEnergyStorage(64000,1000) {
+        return new ModEnergyStorage(64000,100000) {
 
             @Override
             public void onEnergyChanged() {
