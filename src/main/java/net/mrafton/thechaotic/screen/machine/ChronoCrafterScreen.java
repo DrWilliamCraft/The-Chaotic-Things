@@ -88,11 +88,20 @@ public class ChronoCrafterScreen extends AbstractContainerScreen<ChronoCrafterMe
 
     }
 
-    private void renderProgressArrow(GuiGraphics guiGraphics,int x, int y ){
-        if (menu.isCrafting()) {
-           guiGraphics.blit(PROGRESS_BAR,x+ 130,y + 33 + 18 -menu.getScaledArrowProgress(),0,
-                   17 -menu.getScaledArrowProgress(),6,menu.getScaledArrowProgress(),6,18 );
-        }
+    private void renderProgressArrow(GuiGraphics g,int x, int y ){
+        if (!menu.isCrafting()) return;
+
+        int h = menu.getScaledArrowProgress(); // 0..18
+        if (h <= 0) return;
+
+        int barX = x + 130;
+        int bottomY = y + 33 + 18;
+
+        g.blit(PROGRESS_BAR,
+                barX, bottomY - h,
+                0, 18 - h,
+                6, h,
+                6, 18);
     }
 
     @Override

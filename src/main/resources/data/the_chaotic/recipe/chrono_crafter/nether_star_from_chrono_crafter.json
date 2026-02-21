@@ -6,6 +6,7 @@
     { "tag":  "minecraft:planks" }
   ],
   "result": { "id": "minecraft:nether_star", "count": 1 },
-  "max_energy": 7200,
+  "max_energy": 250000000,
+  "time": 40,
   "fluid": { "fluid": "minecraft:water", "amount": 1000 }
 }

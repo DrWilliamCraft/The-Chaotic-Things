@@ -44,7 +44,8 @@ import java.util.Optional;
 
 public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvider {
 
-
+    private int energyRemaining = 0;
+    private int energyRequired = 0; // = aktuelles Rezept maxEnergy
     private static final int FIRST_INPUT_SLOT= 0;
     private static final  int FLUID_ITEM_SLOT =9;
     private static final  int INPUT_ITEM_SLOTS =8;
@@ -194,22 +195,28 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
         this.data = new ContainerData() {
             @Override
             public int get(int i) {
-                return switch (i){
+                return switch (i) {
                     case 0 -> ChronoCrafterBlockEntity.this.progress;
                     case 1 -> ChronoCrafterBlockEntity.this.maxprogress;
+                    case 2 -> ChronoCrafterBlockEntity.this.energyRemaining;
+                    case 3 -> ChronoCrafterBlockEntity.this.energyRequired;
                     default -> 0;
                 };
             }
+
             @Override
-            public void set(int i, int i1) {
-                switch (i){
-                    case 0 -> ChronoCrafterBlockEntity.this.progress =i1;
-                    case 1 ->ChronoCrafterBlockEntity.this.maxprogress=i1;
+            public void set(int i, int v) {
+                switch (i) {
+                    case 0 -> ChronoCrafterBlockEntity.this.progress = v;
+                    case 1 -> ChronoCrafterBlockEntity.this.maxprogress = v;
+                    case 2 -> ChronoCrafterBlockEntity.this.energyRemaining = v;
+                    case 3 -> ChronoCrafterBlockEntity.this.energyRequired = v;
                 }
             }
+
             @Override
             public int getCount() {
-                return 2;
+                return 4;
             }
         };
     }
@@ -254,8 +261,8 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
         tag.putInt("chaotic_crafter.progress",progress);
         tag.putInt("chaotic_crafter.max_progress",maxprogress);
         tag =FLUID_TANK.writeToNBT(registries,tag);
-
         tag.putInt("chrono_crafter.energy",ENERGY_STORAGE.getEnergyStored());
+        tag.putInt("chrono_crafter.energy_remaining", energyRemaining);
 
         super.saveAdditional(tag, registries);
     }
@@ -267,9 +274,9 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
         itemhandler.deserializeNBT(registries,tag.getCompound("inventory"));
         progress =tag.getInt("chaotic_crafter.progress");
         maxprogress =tag.getInt("chaotic_crafter.max_progress");
-
         FLUID_TANK.readFromNBT(registries,tag);
         ENERGY_STORAGE.setEnergy(tag.getInt("chrono_crafter.energy"));
+        energyRemaining = tag.getInt("chrono_crafter.energy_remaining");
     }
 
     public void drops(){
@@ -283,34 +290,38 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
     public void tick(Level level, BlockPos pos, BlockState state) {
         chargeFromEnergyItem();
 
+        if (hasFluidStackInSlot()) transferFluidToTank();
 
-        if (hasRecipe() && isOutputSlotEmptyOrRecievable()) {
-            if (useEnergyForCrafting()) {
+        var opt = getCurentRecipe();
+        if (opt.isEmpty() || !isOutputSlotEmptyOrRecievable()) {
+            resetProgress();
+            energyRemaining = 0;
+            level.setBlockAndUpdate(pos, state.setValue(ChronoCrafterBlock.WORKING, false));
+        } else {
+            ChronoCrafterRecipe r = opt.get().value();
+
+            // Startet Budget nur beim Start eines Crafts
+            beginEnergyBudgetIfNeeded(r);
+
+            // Nur wenn wir diese Tick Energie zahlen konnten, geht Progress weiter
+            if (payEnergyBudgetThisTick(r)) {
                 increaseCraftingProgress();
-                level.setBlockAndUpdate(pos,state.setValue(ChronoCrafterBlock.WORKING,true));
+                level.setBlockAndUpdate(pos, state.setValue(ChronoCrafterBlock.WORKING, true));
                 setChanged(level, pos, state);
 
-                if (hasCraftingFinished()) {
-                    // Rezept VOR dem Verbrauch holen und weiterreichen
-                    var opt = getCurentRecipe();
-                    if (opt.isPresent()) {
-                        ChronoCrafterRecipe r = opt.get().value();
-                        craftItem(r);
-                        extractFluidForCrafting(r);
-                        resetProgress();
-                    } else {
-                        resetProgress(); // sollte kaum passieren, Sicherheitsnetz
-                    }
+                // Fertig nur, wenn Progress fertig UND Budget komplett gezahlt
+                if (hasCraftingFinished() && energyRemaining <= 0) {
+                    craftItem(r);
+                    extractFluidForCrafting(r);
+                    resetProgress();
+                    energyRemaining = 0;
                 }
+            } else {
+                // keine Energie -> Maschine wartet, Progress bleibt stehen
+                level.setBlockAndUpdate(pos, state.setValue(ChronoCrafterBlock.WORKING, false));
             }
-        } else {
-            resetProgress();
-            level.setBlockAndUpdate(pos, state.setValue(ChronoCrafterBlock.WORKING,false));
         }
 
-        if (hasFluidStackInSlot()) {
-            transferFluidToTank();
-        }
         if (++pushCooldown >= 5) {
             pushCooldown = 0;
             pushOutputToNeighbors();
@@ -345,19 +356,19 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
         }
     }
 
-    private boolean useEnergyForCrafting() {
-        var opt = getCurentRecipe();
-        if (opt.isEmpty()) return false;
-        ChronoCrafterRecipe r = opt.get().value();
+    private boolean payEnergyBudgetThisTick(ChronoCrafterRecipe r) {
+        if (energyRemaining <= 0) return true; // nichts mehr zu zahlen
 
-        int perTick = energyPerTick(r);
-        if (perTick <= 0) return true; // Rezept braucht keine Energie
+        // "Wunsch" pro Tick: orientiert an Dauer, aber begrenzt durch Restbudget
+        int want = Math.min(energyPerTick(r), energyRemaining);
 
-        int extracted = ENERGY_STORAGE.extractEnergy(perTick, true);
-        if (extracted < perTick) return false; // nicht genug für diesen Tick
+        // sim: wie viel kann dein Storage wirklich liefern (begrenzt durch maxExtract/aktuellen Stand)
+        int canPay = ENERGY_STORAGE.extractEnergy(want, true);
+        if (canPay <= 0) return false;
 
-        ENERGY_STORAGE.extractEnergy(perTick, false);
-        return true;
+        int paid = ENERGY_STORAGE.extractEnergy(canPay, false);
+        energyRemaining -= paid;
+        return paid > 0;
     }
 
     private void resetProgress() {
@@ -478,7 +489,18 @@ public class ChronoCrafterBlockEntity extends BlockEntity implements MenuProvide
         var fe = stack.getCapability(Capabilities.EnergyStorage.ITEM, null);
         return fe != null; // falls du NUR Geber zulassen willst: return fe != null && fe.extractEnergy(1, true) > 0;
     }
+    private void beginEnergyBudgetIfNeeded(ChronoCrafterRecipe r) {
+        if (progress == 0) {
+            // Craftzeit pro Rezept:
+            this.maxprogress = Math.max(1, r.time());  // <-- NEU
 
+            // Budget:
+            this.energyRequired = Math.max(0, r.maxEnergy());
+            this.energyRemaining = this.energyRequired;
+
+            setChanged();
+        }
+    }
     private void pushOutputToNeighbors() {
         if (level == null || level.isClientSide()) return;
 

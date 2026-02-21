@@ -1,6 +1,7 @@
 package net.mrafton.thechaotic.screen.machine;
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.*;
@@ -19,7 +20,10 @@ public class ChronoCrafterMenu extends AbstractContainerMenu {
 
 
     public ChronoCrafterMenu(int containerId, Inventory inv , FriendlyByteBuf extraData) {
-        this(containerId, inv , inv.player.level().getBlockEntity(extraData.readBlockPos()),new SimpleContainerData(11));
+        this(containerId, inv,
+                inv.player.level().getBlockEntity(extraData.readBlockPos()),
+                new SimpleContainerData(4) // <-- jetzt 4!
+        );
     }
 
     public ChronoCrafterMenu(int containerId, Inventory inv , BlockEntity entity, ContainerData data){
@@ -50,12 +54,26 @@ public class ChronoCrafterMenu extends AbstractContainerMenu {
     public boolean isCrafting(){
         return data.get(0) >0;
     }
-    public int getScaledArrowProgress(){
-        int progress = this.data.get(0);
-        int maxProgress = this.data.get(1);
-        int arrowPixelSize =17;
 
-        return maxProgress != 0 && progress != 0 ? progress * arrowPixelSize /maxProgress :0;
+    public int getScaledArrowProgress() {
+        int progress = data.get(0);
+        int max = data.get(1);
+        int energyRem = data.get(2);
+        int energyReq = data.get(3);
+
+        if (max <= 0) return 0;
+
+        float timeFrac = (float) progress / (float) max;
+
+        float energyFrac = 1.0f;
+        if (energyReq > 0) {
+            energyFrac = (float) (energyReq - energyRem) / (float) energyReq;
+        }
+
+        float frac = Math.min(timeFrac, energyFrac);
+        int h = (int) (frac * 18.0f);
+
+        return Mth.clamp(h, 0, 18);
     }
 
     // CREDIT GOES TO: diesieben07 | https://github.com/diesieben07/SevenCommons

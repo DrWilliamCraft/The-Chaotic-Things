@@ -25,24 +25,21 @@ public record ChronoCrafterRecipe(
         NonNullList<Ingredient> inputs,
         ItemStack output,
         int maxEnergy,
+        int time,
         @Nullable SizedFluidIngredient fluid
 ) implements Recipe<ChronoCrafterRecipeInput> {
 
     @Override
     public NonNullList<Ingredient> getIngredients() {
         NonNullList<Ingredient> list = NonNullList.create();
-        for (Ingredient iwc : inputs) {
-            // Eintrag einmal hinzufügen reicht oft; wenn du die Anzahl sichtbar machen willst, kannst du ihn 'count' Mal adden.
-            list.addAll(this.inputs);
-        }
+        list.addAll(this.inputs);
         return list;
     }
     @Override
     public boolean matches(ChronoCrafterRecipeInput in, Level level) {
         if (level.isClientSide()) return false;
 
-        // Energie & Fluid zuerst prüfen
-        if (maxEnergy > 0 && in.energyStored() < maxEnergy) return false;
+        //Fluid zuerst prüfen
         if (fluid != null && !in.hasFluid(fluid)) return false;
 
         // Jede Zutat muss einen EINZIGEN, noch unbenutzten Slot finden
@@ -101,12 +98,14 @@ public record ChronoCrafterRecipe(
                                 .forGetter(ChronoCrafterRecipe::output),
                         Codec.INT.optionalFieldOf("max_energy", 0)
                                 .forGetter(ChronoCrafterRecipe::maxEnergy),
+                        Codec.INT.optionalFieldOf("time",72)
+                                .forGetter(ChronoCrafterRecipe::time),
                         SizedFluidIngredient.FLAT_CODEC.optionalFieldOf("fluid")
                                 .forGetter(r -> Optional.ofNullable(r.fluid))
-                ).apply(inst, (list, result, maxE, fluidOpt) -> {
+                ).apply(inst, (list, result, maxE,time, fluidOpt) -> {
                     NonNullList<Ingredient> nnl = NonNullList.create();
                     nnl.addAll(list);
-                    return new ChronoCrafterRecipe(nnl, result, maxE, fluidOpt.orElse(null));
+                    return new ChronoCrafterRecipe(nnl, result, maxE,time, fluidOpt.orElse(null));
                 }));
 
         // Netzwerk
@@ -116,6 +115,7 @@ public record ChronoCrafterRecipe(
                     for (Ingredient ing : r.inputs) Ingredient.CONTENTS_STREAM_CODEC.encode(buf, ing);
                     ItemStack.STREAM_CODEC.encode(buf, r.output);
                     buf.writeVarInt(r.maxEnergy);
+                    buf.writeVarInt(r.time);                         // <-- NEU
                     buf.writeBoolean(r.fluid != null);
                     if (r.fluid != null) SizedFluidIngredient.STREAM_CODEC.encode(buf, r.fluid);
                 }, buf -> {
@@ -124,8 +124,9 @@ public record ChronoCrafterRecipe(
                     for (int i = 0; i < n; i++) ins.add(Ingredient.CONTENTS_STREAM_CODEC.decode(buf));
                     ItemStack out = ItemStack.STREAM_CODEC.decode(buf);
                     int maxE = buf.readVarInt();
+                    int time = buf.readVarInt();                     // <-- NEU
                     SizedFluidIngredient f = buf.readBoolean() ? SizedFluidIngredient.STREAM_CODEC.decode(buf) : null;
-                    return new ChronoCrafterRecipe(ins, out, maxE, f);
+                    return new ChronoCrafterRecipe(ins, out, maxE, time, f);
                 });
         @Override public MapCodec<ChronoCrafterRecipe> codec() { return CODEC; }
         @Override public StreamCodec<RegistryFriendlyByteBuf, ChronoCrafterRecipe> streamCodec() { return STREAM_CODEC; }
