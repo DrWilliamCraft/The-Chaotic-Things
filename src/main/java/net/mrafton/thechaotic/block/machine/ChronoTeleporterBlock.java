@@ -1,8 +1,8 @@
 package net.mrafton.thechaotic.block.machine;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -14,9 +14,12 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.portal.DimensionTransition;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+
+import java.util.Optional;
 
 public class ChronoTeleporterBlock extends Block {
     private static final ResourceKey<Level> CHRONO_MINING =
@@ -28,88 +31,197 @@ public class ChronoTeleporterBlock extends Block {
     public ChronoTeleporterBlock(Properties properties) {
         super(properties);
     }
+    // Wie weit "Nether-Portal-like" nach einem existierenden Pad gesucht wird
+    private static final int SEARCH_RADIUS = 16;
 
-    // Player Persistent NBT Keys (nur Return Point behalten)
-    private static final String NBT_ROOT = "the_chaotic";
-    private static final String NBT_RETURN = "chrono_return";
-    private static final String NBT_RETURN_DIM = "dim";
-    private static final String NBT_RETURN_POS = "pos";
+    // Wie weit wir eine sichere Stelle zum Platzieren suchen (Spirale)
+    private static final int CREATE_RADIUS = 32;
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos clickedPadPos, Player player, BlockHitResult hit) {
+      //Sneak + beide Hände leer
         if (!player.isShiftKeyDown()) return InteractionResult.PASS;
         if (!areBothHandsEmpty(player)) return InteractionResult.PASS;
 
         if (level.isClientSide) return InteractionResult.SUCCESS;
         if (!(player instanceof ServerPlayer serverPlayer)) return InteractionResult.PASS;
 
-        boolean isInMining = serverPlayer.level().dimension().equals(CHRONO_MINING);
+        ResourceKey<Level> currentDim = serverPlayer.level().dimension();
+        ResourceKey<Level> targetDim;
 
-        if (!isInMining) {
-            // ===== Overworld -> Mining =====
-
-            // Return-Point speichern: exakt dieser Block in dieser Dimension
-            saveReturnPoint(serverPlayer, serverPlayer.level().dimension(), clickedPadPos);
-
-            ServerLevel miningLevel = serverPlayer.server.getLevel(CHRONO_MINING);
-            if (miningLevel == null) return InteractionResult.PASS;
-
-            int targetX = clickedPadPos.getX();
-            int targetZ = clickedPadPos.getZ();
-
-            // Wenn in dieser X/Z-Spalte schon ein Teleporter existiert -> nimm ihn,
-            // sonst sichere Position finden und neu setzen
-            BlockPos existing = findExistingTeleporterInColumn(miningLevel, targetX, targetZ);
-            BlockPos miningPadPos = (existing != null)
-                    ? existing
-                    : findSafeTeleporterPos(miningLevel, targetX, targetZ);
-
-            // Plattform + Teleporter nur bauen, wenn dort noch keiner steht
-            ensureTeleporterAndPlatform(miningLevel, miningPadPos);
-
-            // Spieler 1 Block darüber spawnen
-            teleport(serverPlayer, miningLevel, miningPadPos.above());
-            return InteractionResult.CONSUME;
-
+        if (currentDim.equals(Level.OVERWORLD)) {
+            targetDim = CHRONO_MINING;
+        } else if (currentDim.equals(CHRONO_MINING)) {
+            targetDim = Level.OVERWORLD;
         } else {
-            // ===== Mining -> Zurück =====
-            ReturnPoint returnPoint = loadReturnPoint(serverPlayer);
-
-            // Fallback: Overworld Spawn
-            ServerLevel overworld = serverPlayer.server.getLevel(Level.OVERWORLD);
-            if (overworld == null) return InteractionResult.PASS;
-
-            if (returnPoint == null) {
-                teleport(serverPlayer, overworld, overworld.getSharedSpawnPos());
-                return InteractionResult.CONSUME;
-            }
-
-            ServerLevel targetLevel = serverPlayer.server.getLevel(returnPoint.dimension);
-            if (targetLevel == null) {
-                teleport(serverPlayer, overworld, overworld.getSharedSpawnPos());
-                return InteractionResult.CONSUME;
-            }
-
-            // Optional: Check ob der Pad-Block noch existiert
-            if (!targetLevel.getBlockState(returnPoint.pos).is(this)) {
-                teleport(serverPlayer, targetLevel, targetLevel.getSharedSpawnPos());
-                return InteractionResult.CONSUME;
-            }
-
-            // Beim Rückweg NICHTS bauen
-            teleport(serverPlayer, targetLevel, returnPoint.pos.above());
-            return InteractionResult.CONSUME;
+            return InteractionResult.PASS; // In anderen Dimensionen macht das Pad nichts
         }
+
+        ServerLevel targetLevel = serverPlayer.server.getLevel(targetDim);
+        if (targetLevel == null) return InteractionResult.PASS;
+
+        // "Portal-like" Projektion: gleiche X/Z wie das Pad, Y egal (wir finden später safe Y)
+        int targetX = clickedPadPos.getX();
+        int targetZ = clickedPadPos.getZ();
+
+        // Referenzpunkt in Zielwelt: gleiche X/Z, Y oben (damit Distanzberechnung nicht durch Y verfälscht)
+        BlockPos projected = new BlockPos(targetX, targetLevel.getMaxBuildHeight() - 2, targetZ);
+
+        // 1) Versuche existierenden Teleporter in der Nähe zu finden
+        Optional<BlockPos> existingExit = findClosestPadNearSurface(targetLevel, projected, SEARCH_RADIUS);
+
+        BlockPos exitPadPos;
+        if (existingExit.isPresent()) {
+            exitPadPos = existingExit.get();
+        } else {
+            // 2) Wenn keiner existiert: sichere Stelle finden und Pad dort erzeugen
+            exitPadPos = findAndCreateExitPad(targetLevel, projected, CREATE_RADIUS);
+        }
+
+        // 3) Teleportiere Spieler 1 Block über dem Pad
+        teleport(serverPlayer, targetLevel, exitPadPos.above());
+        return InteractionResult.CONSUME;
     }
 
     /* =========================
-       Helpers
+       Nether-Portal-like Linking
+       ========================= */
+
+    /**
+     * Findet den nächstgelegenen Teleporter im Radius (Nether-Portal-like),
+     * aber effizient "near surface": pro X/Z holen wir Heightmap-Y und checken ein kleines Y-Fenster.
+     * Das funktioniert perfekt, weil wir Pads immer an sicheren "Oberflächen"-Stellen platzieren.
+     */
+    private Optional<BlockPos> findClosestPadNearSurface(ServerLevel level, BlockPos center, int radius) {
+        BlockPos best = null;
+        long bestDistSq = Long.MAX_VALUE;
+
+        int centerX = center.getX();
+        int centerZ = center.getZ();
+
+        int minX = centerX - radius;
+        int maxX = centerX + radius;
+        int minZ = centerZ - radius;
+        int maxZ = centerZ + radius;
+
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) {
+                // Chunk laden (damit Heightmap/BlockState stabil ist)
+                level.getChunk(x >> 4, z >> 4);
+
+                int surfaceY = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+
+                // kleines Fenster um die Oberfläche (falls Pad 1-2 höher/tiefer steht)
+                int yFrom = Math.max(level.getMinBuildHeight(), surfaceY - 6);
+                int yTo = Math.min(level.getMaxBuildHeight() - 1, surfaceY + 6);
+
+                for (int y = yTo; y >= yFrom; y--) {
+                    BlockPos pos = new BlockPos(x, y, z);
+                    if (level.getBlockState(pos).is(this)) {
+                        long distSq = horizontalDistSq(pos, center);
+                        if (distSq < bestDistSq) {
+                            bestDistSq = distSq;
+                            best = pos;
+                        }
+                        break; // wir haben an dieser Säule ein Pad gefunden, weiter zur nächsten Säule
+                    }
+                }
+            }
+        }
+
+        return Optional.ofNullable(best);
+    }
+
+    /**
+     * Sucht spiralförmig eine sichere Stelle nahe der Projektion und platziert dort:
+     * - 3×3 Steinplattform (immer)
+     * - deinen Teleporterblock in der Mitte (immer)
+     */
+    private BlockPos findAndCreateExitPad(ServerLevel level, BlockPos projected, int radius) {
+        for (BlockPos.MutableBlockPos candidate : BlockPos.spiralAround(projected, radius, Direction.EAST, Direction.SOUTH)) {
+            if (!level.getWorldBorder().isWithinBounds(candidate)) continue;
+
+            // Chunk laden
+            level.getChunk(candidate.getX() >> 4, candidate.getZ() >> 4);
+
+            BlockPos safe = findSafeSpotInColumn(level, candidate.getX(), candidate.getZ());
+            if (safe != null) {
+                placePlatformAndPad(level, safe);
+                return safe;
+            }
+        }
+
+        // Fallback: exakt auf Projektion (mit safe Y in genau dieser Spalte)
+        BlockPos fallback = findSafeSpotInColumn(level, projected.getX(), projected.getZ());
+        if (fallback == null) {
+            fallback = new BlockPos(projected.getX(), level.getMinBuildHeight() + 10, projected.getZ());
+        }
+        placePlatformAndPad(level, fallback);
+        return fallback;
+    }
+
+    /**
+     * Findet eine sichere Stelle in exakt dieser X/Z-Spalte:
+     * - Pad-Spot replaceable
+     * - darüber replaceable (Spieler)
+     * - darunter solide
+     *
+     * Scan von oben nach unten verhindert "spawn ganz unten".
+     */
+    private static BlockPos findSafeSpotInColumn(ServerLevel level, int x, int z) {
+        int maxY = level.getMaxBuildHeight() - 2;
+        int minY = level.getMinBuildHeight() + 2;
+
+        for (int y = maxY; y >= minY; y--) {
+            BlockPos padPos = new BlockPos(x, y, z);
+
+            boolean padFree = level.getBlockState(padPos).canBeReplaced();
+            boolean aboveFree = level.getBlockState(padPos.above()).canBeReplaced();
+            boolean groundSolid = level.getBlockState(padPos.below()).isSolid();
+
+            if (padFree && aboveFree && groundSolid) {
+                return padPos;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Plattform IMMER Stein, Pad IMMER dein Modblock (this).
+     */
+    private void placePlatformAndPad(ServerLevel level, BlockPos padPos) {
+        // 3x3 Steinplattform unter dem Pad
+        BlockPos platformCenter = padPos.below();
+        for (int deltaX = -1; deltaX <= 1; deltaX++) {
+            for (int deltaZ = -1; deltaZ <= 1; deltaZ++) {
+                level.setBlock(platformCenter.offset(deltaX, 0, deltaZ), Blocks.STONE.defaultBlockState(), 3);
+            }
+        }
+
+        // Pad setzen
+        level.setBlock(padPos, this.defaultBlockState(), 3);
+
+        // Spielerplatz freimachen
+        BlockPos playerPos = padPos.above();
+        if (!level.getBlockState(playerPos).canBeReplaced()) {
+            level.destroyBlock(playerPos, true);
+        }
+    }
+
+    private static long horizontalDistSq(BlockPos a, BlockPos b) {
+        long dx = (long) a.getX() - b.getX();
+        long dz = (long) a.getZ() - b.getZ();
+        return dx * dx + dz * dz;
+    }
+
+    /* =========================
+       Utility
        ========================= */
 
     private static boolean areBothHandsEmpty(Player player) {
-        ItemStack mainHandItem = player.getMainHandItem();
-        ItemStack offHandItem = player.getOffhandItem();
-        return mainHandItem.isEmpty() && offHandItem.isEmpty();
+        ItemStack main = player.getMainHandItem();
+        ItemStack off = player.getOffhandItem();
+        return main.isEmpty() && off.isEmpty();
     }
 
     private static void teleport(ServerPlayer player, ServerLevel target, BlockPos targetPos) {
@@ -124,108 +236,7 @@ public class ChronoTeleporterBlock extends Block {
         );
         player.changeDimension(dt);
     }
-
-    /**
-     * Sucht in der X/Z-Spalte nach einem existierenden Teleporter.
-     * Damit wird nicht jedes Mal ein neuer gesetzt.
-     */
-    private BlockPos findExistingTeleporterInColumn(ServerLevel level, int x, int z) {
-        level.getChunk(x >> 4, z >> 4);
-
-        int maxY = level.getMaxBuildHeight() - 1;
-        int minY = level.getMinBuildHeight();
-
-        for (int y = maxY; y >= minY; y--) {
-            BlockPos check = new BlockPos(x, y, z);
-            if (level.getBlockState(check).is(this)) return check;
-        }
-        return null;
-    }
-
-    /**
-     * Sichere Position: Boden solide + Teleporter-Block frei + 1 Block darüber frei.
-     * Scan von oben nach unten verhindert "spawn ganz unten".
-     */
-    private static BlockPos findSafeTeleporterPos(ServerLevel level, int x, int z) {
-        level.getChunk(x >> 4, z >> 4);
-
-        int maxY = level.getMaxBuildHeight() - 2;
-        int minY = level.getMinBuildHeight() + 2;
-
-        for (int y = maxY; y >= minY; y--) {
-            BlockPos teleporterPos = new BlockPos(x, y, z);
-
-            boolean teleporterSpotFree = level.getBlockState(teleporterPos).canBeReplaced();
-            boolean playerSpotFree = level.getBlockState(teleporterPos.above()).canBeReplaced();
-            boolean groundSolid = level.getBlockState(teleporterPos.below()).isSolid();
-
-            if (teleporterSpotFree && playerSpotFree && groundSolid) {
-                return teleporterPos;
-            }
-        }
-
-        return new BlockPos(x, minY + 5, z);
-    }
-
-    /**
-     * Plattform + Teleporter nur setzen, wenn da noch keiner steht.
-     */
-    private void ensureTeleporterAndPlatform(ServerLevel level, BlockPos teleporterPos) {
-        // 3x3 Plattform aus Stein (immer setzen)
-        BlockPos platformCenter = teleporterPos.below();
-
-        for (int deltaX = -1; deltaX <= 1; deltaX++) {
-            for (int deltaZ = -1; deltaZ <= 1; deltaZ++) {
-                BlockPos platformBlockPos = platformCenter.offset(deltaX, 0, deltaZ);
-                level.setBlock(platformBlockPos, Blocks.STONE.defaultBlockState(), 3);
-            }
-        }
-
-        // Teleporter oben drauf in der Mitte
-        level.setBlock(teleporterPos, this.defaultBlockState(), 3);
-
-        // Optional: Platz für den Spieler freimachen
-        BlockPos playerPos = teleporterPos.above();
-        if (!level.getBlockState(playerPos).canBeReplaced()) {
-            level.destroyBlock(playerPos, true);
-        }
-    }
-
-    /* =========================
-       Return Point NBT
-       ========================= */
-
-    private static void saveReturnPoint(ServerPlayer player, ResourceKey<Level> dim, BlockPos pos) {
-        CompoundTag persistentData = player.getPersistentData();
-        CompoundTag root = persistentData.getCompound(NBT_ROOT);
-
-        CompoundTag ret = new CompoundTag();
-        ret.putString(NBT_RETURN_DIM, dim.location().toString());
-        ret.putLong(NBT_RETURN_POS, pos.asLong());
-
-        root.put(NBT_RETURN, ret);
-        persistentData.put(NBT_ROOT, root);
-    }
-
-    private static ReturnPoint loadReturnPoint(ServerPlayer player) {
-        CompoundTag persistentData = player.getPersistentData();
-        if (!persistentData.contains(NBT_ROOT)) return null;
-
-        CompoundTag root = persistentData.getCompound(NBT_ROOT);
-        if (!root.contains(NBT_RETURN)) return null;
-
-        CompoundTag ret = root.getCompound(NBT_RETURN);
-        if (!ret.contains(NBT_RETURN_DIM) || !ret.contains(NBT_RETURN_POS)) return null;
-
-        ResourceLocation dimId = ResourceLocation.parse(ret.getString(NBT_RETURN_DIM));
-        ResourceKey<Level> dimKey = ResourceKey.create(Registries.DIMENSION, dimId);
-        BlockPos pos = BlockPos.of(ret.getLong(NBT_RETURN_POS));
-
-        return new ReturnPoint(dimKey, pos);
-    }
-
-    private record ReturnPoint(ResourceKey<Level> dimension, BlockPos pos) {
-    }
 }
+
 
 
