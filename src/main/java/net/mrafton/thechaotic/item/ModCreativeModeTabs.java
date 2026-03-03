@@ -32,6 +32,8 @@ public class ModCreativeModeTabs {
                         output.accept(ModBlocks.PEDESTAL);
                         output.accept(ModBlocks.CHRONO_CRAFTER);
                         output.accept(ModBlocks.CHRONO_TELEPORTER);
+                        output.accept(ModBlocks.CHRONO_CRAFTING_TABLE);
+
 
 
                     }).build());

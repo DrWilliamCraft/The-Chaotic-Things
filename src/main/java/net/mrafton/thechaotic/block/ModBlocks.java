@@ -6,6 +6,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.mrafton.thechaotic.TheChaotic;
 import net.mrafton.thechaotic.block.machine.ChronoCrafterBlock;
+import net.mrafton.thechaotic.block.machine.ChronoCraftingTable;
 import net.mrafton.thechaotic.block.machine.ChronoTeleporterBlock;
 import net.mrafton.thechaotic.block.test.PedestalBlock;
 import net.mrafton.thechaotic.item.ModItems;
@@ -28,6 +29,8 @@ public class ModBlocks {
             ()->new ChronoCrafterBlock(BlockBehaviour.Properties.of().strength(4f).requiresCorrectToolForDrops()));
     public static final DeferredBlock<Block> CHRONO_TELEPORTER = registerBlock("chrono_teleporter",
             ()->new ChronoTeleporterBlock(BlockBehaviour.Properties.of().strength(4f).requiresCorrectToolForDrops()));
+    public static final DeferredBlock<Block> CHRONO_CRAFTING_TABLE =registerBlock("chrono_crafting_table",
+            ()->new ChronoCraftingTable(BlockBehaviour.Properties.of().strength(4f).requiresCorrectToolForDrops()));
 
 
 

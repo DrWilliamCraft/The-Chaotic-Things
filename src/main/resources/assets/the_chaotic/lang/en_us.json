@@ -11,9 +11,11 @@
   "block.the_chaotic.nether_star_block": "Nether Star Block",
   "block.the_chaotic.chrono_crafter": "Chrono Crafter",
   "block.the_chaotic.pedestal": "Pedestal",
+  "block.the_chaotic.chrono_crafting_table": "Chrono Crafting Table",
 
 
   "blockentity.the_chaotic.chrono_crafter": "Chrono Crafter",
+  "blockentity.the_chaotic.chrono_crafting_table": "Chrono Crafting Table",
   "blockentity.the_chaotic.pedestal": "Pedestal",
   "itemGroup.the_chaotic.the_chaotic_item_tab": "The Chaotic Things",
 

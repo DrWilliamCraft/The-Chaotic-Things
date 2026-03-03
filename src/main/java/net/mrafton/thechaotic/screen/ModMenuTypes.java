@@ -5,6 +5,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.MenuType;
 import net.mrafton.thechaotic.TheChaotic;
 import net.mrafton.thechaotic.screen.machine.ChronoCrafterMenu;
+import net.mrafton.thechaotic.screen.machine.ChronoCraftingTableMenu;
 import net.mrafton.thechaotic.screen.test.PedestalMenu;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
@@ -21,6 +22,8 @@ public class ModMenuTypes {
 
     public static final DeferredHolder<MenuType<?>,MenuType<ChronoCrafterMenu>> CHRONO_CRAFTER_MENU =
             registerMenuType("chrono_crafter_menu",ChronoCrafterMenu::new);
+    public static final DeferredHolder<MenuType<?>,MenuType<ChronoCraftingTableMenu>> CHRONO_CRAFTING_TABLE_MENU =
+            registerMenuType("chrono_crafting_table_menu",ChronoCraftingTableMenu::new);
 
 
 

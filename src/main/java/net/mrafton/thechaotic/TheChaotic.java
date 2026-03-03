@@ -9,6 +9,7 @@ import net.mrafton.thechaotic.item.ModItems;
 import net.mrafton.thechaotic.recipe.ModRecipes;
 import net.mrafton.thechaotic.screen.ModMenuTypes;
 import net.mrafton.thechaotic.screen.machine.ChronoCrafterScreen;
+import net.mrafton.thechaotic.screen.machine.ChronoCraftingTableScreen;
 import net.mrafton.thechaotic.screen.test.PedestalScreen;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
@@ -103,6 +104,7 @@ public class  TheChaotic {
         public static void registerScreens(RegisterMenuScreensEvent event){
             event.register(ModMenuTypes.PEDESTAL_MENU.get(), PedestalScreen::new);
             event.register(ModMenuTypes.CHRONO_CRAFTER_MENU.get(), ChronoCrafterScreen::new);
+            event.register(ModMenuTypes.CHRONO_CRAFTING_TABLE_MENU.get(), ChronoCraftingTableScreen::new);
         }
 
     }

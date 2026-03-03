@@ -20,6 +20,9 @@ public class ModBlockLootTableProvider extends BlockLootSubProvider {
         dropSelf(ModBlocks.NETHER_STAR_BLOCK.get());
         dropSelf(ModBlocks.CHRONO_CRAFTER.get());
         dropSelf(ModBlocks.PEDESTAL.get());
+        dropSelf(ModBlocks.CHRONO_CRAFTING_TABLE.get());
+        dropSelf(ModBlocks.CHRONO_TELEPORTER.get());
+
 
     }
 

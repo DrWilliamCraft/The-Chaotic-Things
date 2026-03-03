@@ -24,6 +24,7 @@ public class ModBlockStateProvider extends BlockStateProvider {
         //        modLoc("block/chrono_crafter_front"),
         //        modLoc("block/chrono_crafter_top")));)
         blockItem(ModBlocks.CHRONO_CRAFTER);
+        blockItem(ModBlocks.CHRONO_CRAFTING_TABLE);
 
 
     }
