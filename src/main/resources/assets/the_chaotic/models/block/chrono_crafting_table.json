@@ -85,8 +85,21 @@
 			"scale": [0.5, 0.5, 0.5]
 		},
 		"gui": {
-			"rotation": [45, 0, 0],
+			"rotation": [0, 0, 0],
 			"scale": [0.75, 0.75, 0.75]
+		},
+		"ground": {
+			"translation": [0, 0, 0],
+			"scale": [0.5, 0.5, 0.5]
 		}
-	}
+	},
+	"groups": [
+		{
+			"name": "group",
+			"origin": [14, 0, 0],
+			"color": 0,
+			"children": [0, 1, 2, 3]
+		},
+		4
+	]
 }

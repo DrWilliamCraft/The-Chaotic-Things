@@ -6,7 +6,9 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.recipes.*;
 
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.ClipContext;
 import net.mrafton.thechaotic.block.ModBlocks;
 import net.neoforged.neoforge.common.Tags;
 import net.neoforged.neoforge.common.conditions.IConditionBuilder;
@@ -31,5 +33,14 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .requires(ModBlocks.NETHER_STAR_BLOCK.get())
                 .unlockedBy("has_nether_star_block",has(ModBlocks.NETHER_STAR_BLOCK.get()))
                 .save(recipeOutput);
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModBlocks.CHRONO_CRAFTING_TABLE.get())
+                .pattern("   ")
+                .pattern(" C ")
+                .pattern("   ")
+                .define('C', Items.CRAFTING_TABLE)
+                .unlockedBy("has_crafting_table",has(Items.CRAFTING_TABLE))
+                .save(recipeOutput);
+
+
     }
 }
