@@ -19,6 +19,10 @@ public class ModBlockTagProvider extends BlockTagsProvider {
     @Override
     protected void addTags(HolderLookup.Provider provider){
         this.tag(BlockTags.MINEABLE_WITH_PICKAXE)
-                .add(ModBlocks.NETHER_STAR_BLOCK.get());
+                .add(ModBlocks.NETHER_STAR_BLOCK.get())
+                .add(ModBlocks.CHRONO_CRAFTER.get());
+
+        this.tag(BlockTags.MINEABLE_WITH_AXE)
+                .add(ModBlocks.CHRONO_CRAFTING_TABLE.get());
     }
 }
